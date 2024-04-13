@@ -1,0 +1,55 @@
+Androne Andrei - 322CC
+
+    => Pentru realizarea temei am impartit structira in urmatoarele fisiere:
+    - "router.c" (logica principala)
+    - "include/constants.h" (toate define-urile de constante)
+    - "lib/router_helper.c" (implementarea majoritatii functiilor folosite de
+fisierul principal, inclusiv cele care se ocupa de prelucrarea si trimiterea pachetelor)
+    - "include/router_helper.c" (antetele functiilor din fisierul de mai sus)
+    - "include/struct_helper.h" (declararea unor structuri ajutatoare, una pentru a incapsula
+pachetele care asteapta un arp_reply cu adresa mac necesara ca sa fie trimise si una 
+folosita pentru implementarea triei)
+    - "lib/struct_helper.c" (functiile care lucreaza cu aceste structuri)
+
+    => Un nod de tip "trie" poate retine pointeri catre alte doua noduri de
+tip trie, corespunzatoare urmatorului bit din prefixul adresei ip din tabela.
+Se parcurge sau initializeaza urmatorul nod din prefix pentru fiecare bit
+existent in masca, simuland astfel o operatie de "&" cu masca. Pentru a 
+ocupa mai putina memorie memoram intr-un nod doar adresa intrarii din tabela
+de rutare corespunzatoare nodului.
+
+    => Cand router-ul primeste un pachet realizam urmatoarele actiuni:
+    - verificam daca pachetul este destinat router-ului sau daca este de tip
+broadcast, altfel nu il interpretam
+    - verificam daca este packet de tip ICMP sau un cadru cu o cerere ARP
+
+    - daca este packey de tip ICMP, verificam daca este un "echo request" pt
+router si trebuie sa ii dam un "echo reply"
+    - actualizam si verificam corectitudinea "checksumu-ului"
+    - actualizam si verificam corectitudinea "ttl-ului". In 
+cazul in care este prea mic trimitem un pachet de eroare
+    - cautam in trie cea mai buna potrivire pentru urmatoarea 
+destinatie a pachetlui, trebuie doar sa-i schimbam adresa mac sursa
+si destinatie.
+    - ne uitam in tabela dinamica cu adresele mac daca cunoastem adresa
+mac corepsunzatoare adresei ip gasita in tabela de rutare. Daca nu o cunoastem,
+salvam pachetul curent in coada "de asteptare" cu pachete  si trimitem un "arp
+request broadcast" pentru a afla adresa mac destinatie. Daca in schimb cunoastem 
+urmatoarea adresa mac, doar o actualizam si trimitem pachetul.
+
+    - daca primim un cadru cu o cerere ARP verificam daca ne este destinata noua,
+iar in caz afirmativ trimitem un "ARP reply".
+    - daca primim un cadru cu un "ARP reply", inseamna ca am primit o adresa mac
+dupa care asteptau anumite pachete, deci le putem trimite. De asemea adaugam in tabela
+dinamica adresa mac primita. (daca atingem limita "tabelei arp", eliminam ultima adresa
+adaugata care probabil e cea mai putin probabil sa fie necesara pe viitor)
+
+NOTE:
+    - pentru usurinta toate adresele ip sunt in network order
+    - testul "router_arp_reply" pica chiar daca atunci cand folosesc
+"arping" de pe h0 pt primul router primesc si un raspuns
+    - testul "router_icmp" pica cu mesajul: "Expected type=0, code=0
+Got type=8, code=0" chiar daca atunci cand verific cu wireshark
+campurile au valorile corecte
+    - testul "forward_10_packets" pica chiar daca atunci cand trimit 10
+pachete manual de la h0 spre h1 acestea ajung cu succes
