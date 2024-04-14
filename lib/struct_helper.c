@@ -18,15 +18,19 @@ arp_table* create_arp_table() {
 }
 
 void add_arp_table_entry(arp_table *t, uint32_t ip, uint8_t *mac) {
+    int full = 0;
     if (t->size >= MAX_ARP_TABLE_SIZE) {
         // eliminam primul element (cel mai vechi)
         for (int i = 0; i < MAX_ARP_TABLE_SIZE - 1; i++) {
             memcpy(&(t->entries[i]), &(t->entries[i + 1]), sizeof(arp_table_entry));
         }
+        full = 1;
     }
     t->entries[t->size].ip = ip;
     memcpy(t->entries[t->size].mac, mac, 6);
-    t->size++;
+    if (!full) {
+        t->size++;
+    }
 }
 
 
